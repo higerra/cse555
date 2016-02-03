@@ -1,7 +1,10 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include <glog/logging.h>
+#include <gflags/gflags.h>
+
 #include <algorithm>
+#include <numeric>
 #include <limits>
 #include <vector>
 #include <string>
@@ -11,7 +14,9 @@ using namespace std;
 using namespace cv;
 using namespace Eigen;
 
-Vector2i computeOffset(const Mat& src, const Mat& tgt, const Vector2i init, const int radius = 10);
+DEFINE_bool(use_gradient, true, "use_gradient");
+
+Vector2i computeOffset(const Mat& src, const Mat& tgt, const Vector2i init, const int radius = 20);
 void myPynDown(const Mat& input, Mat& output);
 
 int main(int argc, char** argv) {
@@ -21,6 +26,7 @@ int main(int argc, char** argv) {
 	}
 
 	google::InitGoogleLogging(argv[0]);
+	google::ParseCommandLineFlags(&argc, &argv, true);
 
 	Mat input = imread(argv[1]);
 	CHECK_GT(input.cols, 0) << "Image not loaded!";
@@ -32,28 +38,30 @@ int main(int argc, char** argv) {
 	cv::Size singleSize(input.cols, input.rows / 3);
 	for (auto i = 0; i < chn.size(); ++i) {
 		chn[i] = input(Range(i * singleSize.height, (i + 1) * singleSize.height), Range::all()).clone();
-		imwrite("channel"+to_string(i)+".png", chn[i]);
-		cout << chn[i].cols << ' ' << chn[i].rows << endl;
+		imwrite("channel"+to_string(i)+".jpg", chn[i]);
 	}
 
 	cout << "Computing gradient..." << endl;
 	vector<Mat> gm(3); //gradient magnitude
-//	for (auto i = 0; i < 3; ++i) {
-//		Mat gx, gy;
-//		Sobel(chn[i], gx, CV_32F, 1, 0);
-//		Sobel(chn[i], gy, CV_32F, 0, 1);
-//		gm[i] = Mat(gx.rows, gx.cols, CV_32F);
-//		float *pGx = (float *) gx.data;
-//		float *pGy = (float *) gy.data;
-//		float *pGm = (float *) gm[i].data;
-//		for (int j = 0; j < gm[i].cols * gm[i].rows; ++j) {
-//			pGm[j] = sqrt(pGx[j] * pGx[j] + pGy[j] * pGy[j]);
-//		}
-//		imwrite("gm"+to_string(i)+".png", gm[i]);
-//	}
-	for(auto i=0; i<3; ++i)
-		chn[i].convertTo(gm[i], CV_32F);
 
+	if(FLAGS_use_gradient) {
+		for (auto i = 0; i < 3; ++i) {
+			Mat gx, gy;
+			Sobel(chn[i], gx, CV_32F, 1, 0);
+			Sobel(chn[i], gy, CV_32F, 0, 1);
+			gm[i] = Mat(gx.rows, gx.cols, CV_32F);
+			float *pGx = (float *) gx.data;
+			float *pGy = (float *) gy.data;
+			float *pGm = (float *) gm[i].data;
+			for (int j = 0; j < gm[i].cols * gm[i].rows; ++j) {
+				pGm[j] = sqrt(pGx[j] * pGx[j] + pGy[j] * pGy[j]);
+			}
+			imwrite("edge"+to_string(i)+".jpg", gm[i]);
+		}
+	}else {
+		for (auto i = 0; i < 3; ++i)
+			chn[i].convertTo(gm[i], CV_32F);
+	}
 
 	//align each channel to first channel
 	const int kLevel = 4;
@@ -62,8 +70,6 @@ int main(int argc, char** argv) {
 	pyramid_tgt[0] = gm[0].clone();
 	for (auto j = 1; j < pyramid_tgt.size(); ++j)
 		myPynDown(pyramid_tgt[j - 1], pyramid_tgt[j]);
-	for(auto i=0; i<kLevel; ++i)
-		imwrite("pyramid"+to_string(i)+".png", pyramid_tgt[i]);
 
 	for (auto i = 1; i < 3; ++i) {
 		//construct pyramid
@@ -78,22 +84,21 @@ int main(int argc, char** argv) {
 		cout << "Computing offset" << endl;
 		for (int j = pyramid.size() - 1; j >= 0; --j) {
 			cout << j << ' ';
-			offset[i] = computeOffset(pyramid[j], pyramid_tgt[j], offset[i] * 2);
+			if (j == pyramid.size() - 1)
+				offset[i] = computeOffset(pyramid[j], pyramid_tgt[j], offset[i] * 2, 20);
+			else
+				offset[i] = computeOffset(pyramid[j], pyramid_tgt[j], offset[i] * 2, 5);
 		}
 		cout << endl;
 		cout << "Offset for channel " << i << ": " << offset[i][0] << ' ' << offset[i][1] << endl;
 	}
 
 	//compose color image and auto corp
-	cout << "Composing and corpping" << endl;
-	Mat colorImg(chn[0].rows, chn[0].cols, CV_8UC3, Scalar(0, 0, 0));
+	cout << "Composing" << endl;
+	Mat colorImg(chn[0].rows, chn[0].cols, CV_32FC3, Scalar(0, 0, 0));
 	vector<int> bound(4);
-	bound[0] = colorImg.cols;
-	bound[1] = colorImg.rows;
-	bound[2] = 0;
-	bound[3] = 0;
 
-	uchar *pColor = colorImg.data;
+	float *pColor = (float *) colorImg.data;
 	vector<const uchar *> pCh(3);
 	for (auto j = 0; j < 3; ++j)
 		pCh[j] = chn[j].data;
@@ -101,28 +106,71 @@ int main(int argc, char** argv) {
 	for (auto y = 0; y < colorImg.rows; ++y) {
 		for (auto x = 0; x < colorImg.cols; ++x) {
 			const int idx = y * colorImg.cols + x;
-			bool valid = true;
 			for (auto j = 0; j < 3; ++j) {
 				int curx = x + offset[j][0];
 				int cury = y + offset[j][1];
-				if (curx < 0 || cury < 0 || curx >= colorImg.cols || cury >= colorImg.rows) {
-					valid = false;
-					break;
-				}
-				pColor[idx * 3 + j] = pCh[j][cury * chn[j].cols + curx];
-			}
-			//update bound
-			if (valid) {
-				bound[0] = min(bound[0], x);
-				bound[1] = min(bound[1], y);
-				bound[2] = max(bound[2], x);
-				bound[3] = max(bound[3], y);
+				if (curx < 0 || cury < 0 || curx >= colorImg.cols || cury >= colorImg.rows)
+					continue;
+				pColor[idx * 3 + j] = (float) pCh[j][cury * chn[j].cols + curx];
 			}
 		}
 	}
+	imwrite("result_uncroped.jpg", colorImg);
 
-	Mat corpped = colorImg(cv::Rect(bound[0], bound[1], bound[2] - bound[0], bound[3] - bound[1])).clone();
-	imwrite("result.png", corpped);
+	//detect bound
+	const double stv_thres = 30;
+	Mat m, stv;
+	cv::meanStdDev(colorImg.col(0), m, stv);
+
+	double min_stv;
+	for (bound[0] = 0; bound[0] < colorImg.cols / 10; ++bound[0]) {
+		cv::meanStdDev(colorImg.col(bound[0]), m, stv);
+		cv::minMaxIdx(stv, &min_stv, 0);
+		if (min_stv > stv_thres)
+			break;
+	}
+	for (bound[2] = colorImg.cols - 1; bound[2] >= colorImg.cols * 0.9; --bound[2]) {
+		cv::meanStdDev(colorImg.col(bound[2]), m, stv);
+		cv::minMaxIdx(stv, &min_stv, 0);
+		if (min_stv > stv_thres)
+			break;
+	}
+	for (bound[1] = 0; bound[1] < colorImg.rows / 10; ++bound[1]) {
+		cv::meanStdDev(colorImg.row(bound[1]), m, stv);
+		cv::minMaxIdx(stv, &min_stv, 0);
+		if (min_stv > stv_thres)
+			break;
+	}
+	for (bound[3] = colorImg.rows - 1; bound[3] >= colorImg.rows * 0.9; --bound[3]) {
+		cv::meanStdDev(colorImg.row(bound[3]), m, stv);
+		cv::minMaxIdx(stv, &min_stv, 0);
+		if (min_stv > stv_thres)
+			break;
+	}
+	printf("bound: (%d,%d)->(%d,%d)\n", bound[0], bound[1], bound[2], bound[3]);
+
+	Mat cropped = colorImg(cv::Rect(bound[0], bound[1], bound[2] - bound[0], bound[3] - bound[1])).clone();
+	imwrite("result_cropped.jpg", cropped);
+
+	//auto contrast
+	vector<Mat> singleChn(3);
+	split(cropped, singleChn);
+	vector<double> minv(3), maxv(3);
+	for (auto j = 0; j < 3; ++j)
+		cv::minMaxIdx(singleChn[j], &minv[j], &maxv[j]);
+	double min_all = *min_element(minv.begin(), minv.end());
+	double max_all = *max_element(maxv.begin(), maxv.end());
+
+
+	float* pCropped = (float* )cropped.data;
+	double scale = 255 / (max_all - min_all);
+
+	for(auto i=0; i<cropped.rows * cropped.cols; ++i){
+		for(auto j=0; j<cropped.channels(); ++j)
+			pCropped[3 * i + j] = (pCropped[3 * i + j] - min_all) * scale;
+	}
+	imwrite("result_constrsted.jpg", cropped);
+
 	return 0;
 }
 
