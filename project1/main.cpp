@@ -33,6 +33,7 @@ int main(int argc, char** argv) {
 	cvtColor(input, input, CV_BGR2GRAY);
 
 	//divide images into BGR
+	float t_all = (float)getTickCount();
 	cout << "Splitting images" << endl;
 	vector<Mat> chn(3); //BGR
 	cv::Size singleSize(input.cols, input.rows / 3);
@@ -87,7 +88,7 @@ int main(int argc, char** argv) {
 			if (j == pyramid.size() - 1)
 				offset[i] = computeOffset(pyramid[j], pyramid_tgt[j], offset[i] * 2, 20);
 			else
-				offset[i] = computeOffset(pyramid[j], pyramid_tgt[j], offset[i] * 2, 5);
+				offset[i] = computeOffset(pyramid[j], pyramid_tgt[j], offset[i] * 2, 3);
 		}
 		cout << endl;
 		cout << "Offset for channel " << i << ": " << offset[i][0] << ' ' << offset[i][1] << endl;
@@ -115,6 +116,9 @@ int main(int argc, char** argv) {
 			}
 		}
 	}
+
+	cout << "Time usage for alignment: " << ((float)getTickCount() - t_all) / (float)getTickFrequency() << "s" << endl;
+	t_all = (float)getTickCount();
 	imwrite("result_uncroped.jpg", colorImg);
 
 	//detect bound
@@ -150,26 +154,41 @@ int main(int argc, char** argv) {
 	printf("bound: (%d,%d)->(%d,%d)\n", bound[0], bound[1], bound[2], bound[3]);
 
 	Mat cropped = colorImg(cv::Rect(bound[0], bound[1], bound[2] - bound[0], bound[3] - bound[1])).clone();
+	cout << "Time usage for auto crop: " << ((float)getTickCount() - t_all) / (float)getTickFrequency() << "s" << endl;
+	t_all = (float)getTickCount();
+
 	imwrite("result_cropped.jpg", cropped);
 
 	//auto contrast
-	vector<Mat> singleChn(3);
-	split(cropped, singleChn);
-	vector<double> minv(3), maxv(3);
-	for (auto j = 0; j < 3; ++j)
-		cv::minMaxIdx(singleChn[j], &minv[j], &maxv[j]);
-	double min_all = *min_element(minv.begin(), minv.end());
-	double max_all = *max_element(maxv.begin(), maxv.end());
-
-
-	float* pCropped = (float* )cropped.data;
-	double scale = 255 / (max_all - min_all);
-
-	for(auto i=0; i<cropped.rows * cropped.cols; ++i){
-		for(auto j=0; j<cropped.channels(); ++j)
-			pCropped[3 * i + j] = (pCropped[3 * i + j] - min_all) * scale;
+	//locate the darkest and brightest pixel
+	double min_all = -1, max_all = -1;
+	double min_norm = 9999999, max_norm = -1;
+	float* pCropped = (float*)cropped.data;
+	for(auto y=0; y<cropped.rows; ++y){
+		for(auto x=0; x<cropped.cols; ++x){
+			const int idx = y * cropped.cols + x;
+			Vector3d pix(pCropped[idx*3], pCropped[idx*3+1], pCropped[idx*3+2]);
+			double n = pix.norm();
+			if(n > max_norm){
+				max_norm = n;
+				max_all = std::max(pix[0], std::max(pix[1], pix[2]));
+			}
+			if(n < min_norm){
+				min_norm = n;
+				min_all = std::min(pix[0], std::min(pix[1], pix[2]));
+			}
+		}
 	}
-	imwrite("result_constrsted.jpg", cropped);
+	CHECK_GT(min_all, -1);
+	CHECK_GT(max_all, -1);
+	if(min_all != max_all){
+		float scale = 255.0 / (max_all - min_all);
+		for(auto i=0; i<cropped.cols * cropped.rows * cropped.channels(); ++i)
+			pCropped[i] = (pCropped[i] - (float)min_all) * scale;
+	}
+
+	cout << "Time usage for auto constrast: " << ((float)getTickCount() - t_all) / (float)getTickFrequency() << "s" << endl;
+	imwrite("result_contrasted.jpg", cropped);
 
 	return 0;
 }
