@@ -9,12 +9,15 @@ im2var = zeros(lh,lw);
 
 im2var(1:kPix) = 1:kPix;
 
-triplet = zeros(kEdge*3+1, 3);
+triplet = zeros(kEdge*2+1, 3);
 
 %fill sparse matrix by triplet
-for x=1:lw-1
-    for y=1:lh-1
-        triplet(im2var(y,x)
-    end
+e = 1;
+for y=1:lh-1
+   for x=1:lw-1
+       triplet(e:e+1,1) = [im2var(y,x), im2var(y,x)];
+       
+   end
 end
+
 end
