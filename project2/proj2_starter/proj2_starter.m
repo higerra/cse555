@@ -1,6 +1,6 @@
 % starter script for project 3
-DO_TOY = true;
-DO_BLEND = false;
+DO_TOY = false;
+DO_BLEND = true;
 DO_MIXED  = false;
 DO_COLOR2GRAY = false;
 
@@ -9,20 +9,28 @@ if DO_TOY
     % im_out should be approximately the same as toyim
     im_out = toy_reconstruct(toyim);   % you need to write this function, toy_reconstruct
     disp(['Error: ' num2str(sqrt(sum((toyim(:)-im_out(:)).^2)))])
+    figure
+    subplot(1,2,1);
+    imshow(toyim);
+    subplot(1,2,2);
+    imshow(im_out);
 end
 
 if DO_BLEND
     % do a small one first, while debugging
-    im_background = imresize(im2double(imread('./samples/im2.jpg')), 0.25, 'bilinear');
-    im_object = imresize(im2double(imread('./samples/penguin-chick.jpeg')), 0.25, 'bilinear');
-
+    %im_background = imresize(im2double(imread('./samples/im2.jpg')), 0.25, 'bilinear');
+    %im_object = imresize(im2double(imread('./samples/penguin-chick.jpeg')), 0.25, 'bilinear');
+    im_background = im2double(imread('./samples/im2.jpg'));
+    im_object = im2double(imread('./samples/penguin-chick.jpeg'));
+    
     % get source region mask from the user
     objmask = getMask(im_object);
     % align im_s and mask_s with im_background
     [im_s, mask_s] = alignSource(im_object, objmask, im_background);
-
     % blend
+    tic;
     im_blend = poissonBlend(im_s, mask_s, im_background);   % you need to write this.
+    toc;
     figure(3), hold off, imshow(im_blend)
 end
 
