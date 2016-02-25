@@ -28,18 +28,35 @@ if DO_BLEND
     % align im_s and mask_s with im_background
     [im_s, mask_s] = alignSource(im_object, objmask, im_background);
     % blend
+    disp('Possion blending...');
     tic;
     im_blend = poissonBlend(im_s, mask_s, im_background);   % you need to write this.
     toc;
+    disp('Mixed gradient blending');
+    tic;
+    im_mixblend = mixedBlend(im_s, mask_s, im_background);     % you need to write this.
+    toc;
+    imwrite(im_blend, 'possionBlend.jpg');
+    imwrite(im_mixblend, 'mixedBlend.jpg');
     figure(3), hold off, imshow(im_blend)
 end
 
 if DO_MIXED
     % read images
     %...
+    im_background = im2double(imread('./samples/im2.jpg'));
+    im_object = im2double(imread('./samples/penguin-chick.jpeg'));
     
+    % get source region mask from the user
+    objmask = getMask(im_object);
+    % align im_s and mask_s with im_background
+    [im_s, mask_s] = alignSource(im_object, objmask, im_background);
+    % blend
+    tic;
     % blend
     im_blend = mixedBlend(im_s, mask_s, im_background);     % you need to write this.
+    toc;
+    imwrite(im_blend, 'mixedBlend.jpg');
     figure(3), hold off, imshow(im_blend);
 end
 
