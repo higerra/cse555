@@ -14,27 +14,35 @@ b = zeros(2*kEdge+1,1);
 %fill sparse matrix by triplet
 e = 1;
 t = 1;
-for x=1:lw-1
-   for y=1:lh-1
-       triplet(t,:) = [e,im2var(y,x),1];
-       triplet(t+1,:) = [e,im2var(y+1,x),-1];
-       triplet(t+2,:) = [e+kEdge, im2var(y,x),1];
-       triplet(t+3,:) = [e+kEdge, im2var(y,x+1), -1];
-       b(e) = toyim(y,x) - toyim(y+1,x);
-       b(e+kEdge) = toyim(y,x) - toyim(y,x+1);
-       t = t + 4;
-       e = e + 1;
+for x=1:lw
+   for y=1:lh
+       if y < lh
+           triplet(t,:) = [e,im2var(y,x),-1];
+           triplet(t+1,:) = [e,im2var(y+1,x),1];
+           b(e) = toyim(y+1,x) - toyim(y,x);
+           t = t+2;
+           e = e+1;
+       end
+       if x < lw
+           triplet(t,:) = [e, im2var(y,x),-1];
+           triplet(t+1,:) = [e, im2var(y,x+1), 1];
+           b(e) = toyim(y,x+1) - toyim(y,x);
+           t = t+2;
+           e = e+1;
+       end
    end
 end
 
 %border condition
-triplet(kEdge*4+1,:) = [kEdge+1,1,1];
-b(kEdge+1) = toyim(1,1);
+triplet(t,:) = [e,1,1];
+b(e) = toyim(1,1);
+
+triplet2 = triplet(1:t, :);
 
 %contruct sparse matrix and solve
-A = sparse(triplet(:,1), triplet(:,2), triplet(:,3), 2*kEdge+1, kPix);
+A = sparse(triplet2(:,1), triplet2(:,2), triplet2(:,3), e, kPix);
 
 im_out = zeros(lh, lw);
-im_out(1:kPix) = lscov(A,b);
+im_out(1:kPix) = A\b;
 
 end

@@ -9,23 +9,17 @@ end
 
 [h,w,c] = size(im_target);
 
-%get mask for internal pixels and border pixels
-m_internal = imerode(im_mask, strel('diamond',1));
-m_border = xor(im_mask, m_internal);
-
-[y_int, x_int] = find(m_internal);
-[y_bor, x_bor] = find(m_border);
+[y_int, x_int] = find(im_mask);
 
 kInt = size(y_int, 1);
-kBor = size(y_bor,1);
-kPix = kInt + kBor;
+kPix = kInt;
 
 B = zeros(kPix, c);
 
 im2var = zeros(h,w);
 v = 1;
-for x= max(min(x_bor),1): min(max(x_bor),w)
-    for y= max(min(y_bor),1): min(max(y_bor),h)
+for x= max(min(x_int),1): min(max(x_int),w)
+    for y= max(min(y_int),1): min(max(y_int),h)
        if im_mask(y,x) > 0
            im2var(y,x) = v;
            v = v + 1;
@@ -62,84 +56,52 @@ t = 1;
 
 disp('Constructing A - stage 1');
 for k=1:kInt
-    triplet(t,:) = [e, im2var(y_int(k), x_int(k)), 1];
-    triplet(t+1,:) = [e, im2var(y_int(k), x_int(k)+1), -1];
-    triplet(t+2,:) = [e+1, im2var(y_int(k), x_int(k)), 1];
-    triplet(t+3,:) = [e+1, im2var(y_int(k)+1, x_int(k)), -1];
-    B(e,:) = Gx(y_int(k), x_int(k));
-    B(e+1,:) = Gy(y_int(k), x_int(k));
-    t = t + 4;
-    e = e + 2;
-    if m_border(y_int(k)-1, x_int(k)) == 1
-        triplet(t,:) = [e, im2var(y_int(k), x_int(k)), 1];
-        triplet(t+1,:) = [e, im2var(y_int(k)-1, x_int(k)), -1];
-        B(e,:) = -Gy(y_int(k)-1, x_int(k));
-        t = t+2;
-        e = e+1;
-    end
-    if m_border(y_int(k), x_int(k)-1) == 1
-        triplet(t,:) = [e, im2var(y_int(k), x_int(k)), 1];
-        triplet(t+1,:) = [e, im2var(y_int(k), x_int(k)-1), -1];
-        B(e,:) = -Gx(y_int(k), x_int(k) - 1);
-        t = t+2;
-        e = e+1;
-    end
-end
-
-%border pixels
-% for k=1:kBor
-%     if y_bor(k) > 1
-%         if m_internal(y_bor(k)-1,x_bor(k)) == 0
-%             triplet(t,:) = [e, im2var(y_bor(k), x_bor(k)), 1];
-%             B(e,:) = im_object(y_bor(k), y_bor(k), :) - im_object(y_bor(k)-1, x_bor(k), :) + im_target(y_bor(k)-1, x_bor(k));
-%             e = e+1;
-%             t = t+1;
-%         end
-%     end
-%     if y_bor(k) < h
-%         if m_internal(y_bor(k)+1,x_bor(k)) == 0
-%             triplet(t,:) = [e, im2var(y_bor(k), x_bor(k)), 1];
-%             B(e,:) = im_object(y_bor(k), y_bor(k), :) - im_object(y_bor(k)+1, x_bor(k), :) + im_target(y_bor(k)-1, x_bor(k));
-%             e = e+1;
-%             t = t+1;
-%         end
-%     end
-% end
-
-disp('Constructing A - stage 2');
-for k=1:kBor
-    lacc = 0;
-    racc = zeros(1,1,c);
-    whos temp
-    if y_bor(k) > 1
-        if m_internal(y_bor(k)-1,x_bor(k)) == 0
-            lacc = lacc + 1;
-            racc = racc - Gy(y_bor(k)-1, x_bor(k)) + im_target(y_bor(k)-1, x_bor(k));
+    if y_int(k) < h
+        if im_mask(y_int(k)+1, x_int(k))
+            triplet(t,:) = [e, im2var(y_int(k), x_int(k)), 1];
+            triplet(t+1,:) = [e, im2var(y_int(k)+1, x_int(k)), -1];
+            B(e,:) = Gy(y_int(k), x_int(k),:);
+            t = t+2;
+            e = e+1;
+        else
+            triplet(t,:) = [e, im2var(y_int(k), x_int(k)), 1];
+            B(e,:) = Gy(y_int(k), x_int(k),:) + im_target(y_int(k)+1, x_int(k),:);
+            t = t+1;
+            e = e+1;
         end
     end
-    if y_bor(k) < h
-        if m_internal(y_bor(k)+1,x_bor(k)) == 0
-            lacc = lacc + 1;
-            racc = racc + Gy(y_bor(k), x_bor(k)) + im_target(y_bor(k)+1, x_bor(k));
+    
+    if y_int(k) > 0
+        if ~im_mask(y_int(k)-1, x_int(k))
+            triplet(t,:) = [e, im2var(y_int(k), x_int(k)), 1];
+            B(e,:) = -Gy(y_int(k)-1, x_int(k),:) + im_target(y_int(k)-1, x_int(k),:);
+            t = t+1;
+            e = e+1;
         end
     end
-    if x_bor(k) > 1
-        if m_internal(y_bor(k),x_bor(k)-1) == 0
-            lacc = lacc + 1;
-            racc = racc - Gx(y_bor(k), x_bor(k)-1)  + im_target(y_bor(k), x_bor(k)-1);
+    
+    if x_int(k) < w
+        if im_mask(y_int(k), x_int(k)+1)
+            triplet(t,:) = [e, im2var(y_int(k), x_int(k)), 1];
+            triplet(t+1,:) = [e, im2var(y_int(k), x_int(k)+1), -1];
+            B(e,:) = Gx(y_int(k), x_int(k),:);
+            t = t+2;
+            e = e+1;
+        else
+            triplet(t,:) = [e, im2var(y_int(k), x_int(k)), 1];
+            B(e,:) = Gx(y_int(k), x_int(k),:) + im_target(y_int(k), x_int(k)+1,:);
+            t = t+1;
+            e = e+1;
         end
     end
-    if x_bor(k) < w
-        if m_internal(y_bor(k),x_bor(k)+1) == 0
-            lacc = lacc + 1;
-            racc = racc + Gx(y_bor(k), x_bor(k)) + im_target(y_bor(k), x_bor(k)+1);
+    
+    if x_int(k) > 0
+        if ~im_mask(y_int(k), x_int(k)-1)
+            triplet(t,:) = [e, im2var(y_int(k), x_int(k)), 1];
+            B(e,:) = -Gx(y_int(k), x_int(k)-1,:) + im_target(y_int(k), x_int(k)-1,:);
+            t = t+1;
+            e = e+1;
         end
-    end
-    if lacc > 0
-        triplet(t,:) = [e, im2var(y_bor(k), x_bor(k)), lacc];
-        B(e,:) = racc;
-        t = t + 1;
-        e = e + 1;
     end
 end
 
@@ -155,8 +117,8 @@ for ch=1:c
 end
 
 disp('Copying pixel');
-for x= max(min(x_bor),1): min(max(x_bor),w)
-    for y= max(min(y_bor),1): min(max(y_bor),h)
+for x= max(min(x_int),1): min(max(x_int),w)
+    for y= max(min(y_int),1): min(max(y_int),h)
        if im_mask(y,x) > 0
            im_out(y,x,:) = R(im2var(y,x),:);
        end
