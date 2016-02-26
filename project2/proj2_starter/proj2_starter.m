@@ -1,8 +1,8 @@
 % starter script for project 3
 DO_TOY = false;
-DO_BLEND = true;
+DO_BLEND = false;
 DO_MIXED  = false;
-DO_COLOR2GRAY = false;
+DO_COLOR2GRAY = true;
 
 if DO_TOY 
     toyim = im2double(imread('./samples/toy_problem.png')); 
@@ -12,8 +12,10 @@ if DO_TOY
     figure(100);
     toyfig(1) = subplot(1,2,1);
     imshow(toyim);
+    imwrite(toyim,'toy_ori.jpg');
     toyfig(2) = subplot(1,2,2);
     imshow(im_out);
+    imwrite(im_out,'toy_reconstructed.jpg');
     linkaxes(toyfig, 'xy');
 end
 
@@ -21,8 +23,8 @@ if DO_BLEND
     % do a small one first, while debugging
     %im_background = imresize(im2double(imread('./samples/beach.jpg')), 0.25, 'bilinear');
     %im_object = imresize(im2double(imread('./samples/shark.jpg')), 0.25, 'bilinear');
-    im_background = im2double(imread('./samples/sea.jpg'));
-    im_object = im2double(imread('./samples/plane3.jpg'));
+    im_background = im2double(imread('./samples/im3.jpg'));
+    im_object = im2double(imread('./samples/penguin-chick.jpeg'));
     
     % get source region mask from the user
     objmask = getMask(im_object);
@@ -77,5 +79,13 @@ if DO_COLOR2GRAY
     % also feel welcome to try this on some natural images and compare to rgb2gray
     im_rgb = im2double(imread('./samples/colorBlindTest35.png'));
     im_gr = color2gray(im_rgb);
-    figure(4), hold off, imagesc(im_gr), axis image, colormap gray
+    im_normalgr = rgb2gray(im_rgb);
+    figure(4), hold off,
+    gf(1) = subplot(1,2,1);
+    imagesc(im_gr), axis image, colormap gray
+    gf(2) = subplot(1,2,2);
+    imagesc(im_normalgr), axis image, colormap gray
+    linkaxes(gf, 'xy');
+    imwrite(im_gr, 'color2gray.jpg');
+    imwrite(im_normalgr, 'baseline.jpg');
 end

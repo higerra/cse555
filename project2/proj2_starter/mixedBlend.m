@@ -71,7 +71,7 @@ for k=1:kInt
         end
     end
     
-    if y_int(k) > 0
+    if y_int(k) > 1
         if ~im_mask(y_int(k)-1, x_int(k))
             triplet(t,:) = [e, im2var(y_int(k), x_int(k)), 1];
             B(e,:) = -Gy(y_int(k)-1, x_int(k),:) + im_target(y_int(k)-1, x_int(k),:);
@@ -95,7 +95,7 @@ for k=1:kInt
         end
     end
     
-    if x_int(k) > 0
+    if x_int(k) > 1
         if ~im_mask(y_int(k), x_int(k)-1)
             triplet(t,:) = [e, im2var(y_int(k), x_int(k)), 1];
             B(e,:) = -Gx(y_int(k), x_int(k)-1,:) + im_target(y_int(k), x_int(k)-1,:);
