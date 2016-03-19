@@ -21,8 +21,8 @@ if DO_BLEND
     % do a small one first, while debugging
     %im_background = imresize(im2double(imread('./samples/beach.jpg')), 0.25, 'bilinear');
     %im_object = imresize(im2double(imread('./samples/shark.jpg')), 0.25, 'bilinear');
-    im_background = im2double(imread('./samples/sea.jpg'));
-    im_object = im2double(imread('./samples/plane3.jpg'));
+    im_background = im2double(imread('./samples/monet.jpg'));
+    im_object = im2double(imread('./samples/liberty.jpg'));
     
     % get source region mask from the user
     objmask = getMask(im_object);
