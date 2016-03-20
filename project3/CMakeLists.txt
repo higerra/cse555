@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.0)
 
 project(project3)
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${BUILD_DIRECTORY}/project1")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${BUILD_DIRECTORY}/project3")
 
 add_executable(project3 main.cpp quilting.cpp quilting.h)
 
