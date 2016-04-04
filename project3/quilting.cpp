@@ -192,26 +192,32 @@ namespace quilting{
 			for (auto x = R; x < output.cols; x += 2 * R - OL) {
 				if(x == R && y == R)
 					continue;
-				if(x >= output.cols - R)
+				int xOL = OL, yOL = OL;
+				if(x >= output.cols - R) {
+					xOL += x - output.cols + R;
 					x = output.cols - R;
-				if(y >= output.rows - R)
+
+				}
+				if(y >= output.rows - R) {
+					yOL += y - output.rows + R;
 					y = output.rows - R;
+				}
 				printf("(%d,%d)\n", x, y);
 				Mat patch = samplePatch(input, inputMap, output, guide, mask, x, y, config);
 				//seam cut
 				if(y > R){
-					Mat b1 = output(Rect(x-R, y-R, 2*R, OL));
-					Mat b2 = patch(Rect(0,0,2*R, OL));
+					Mat b1 = output(Rect(x-R, y-R, 2*R, yOL));
+					Mat b2 = patch(Rect(0,0,2*R, yOL));
 					Mat b3 = seamCut(b1,b2);
-					b3.copyTo(patch(Range(0,OL), Range(0,2*R)));
+					b3.copyTo(patch(Range(0,yOL), Range(0,2*R)));
 				}
 				if(x > R){
-					Mat b1 = output(Rect(x-R, y-R, OL, 2*R));
-					Mat b2 = patch(Rect(0,0,OL,2*R));
+					Mat b1 = output(Rect(x-R, y-R, xOL, 2*R));
+					Mat b2 = patch(Rect(0,0,xOL,2*R));
 					cv::transpose(b1,b1);
 					cv::transpose(b2,b2);
 					Mat b3 = seamCut(b1,b2);
-					cv::transpose(b3,patch(Range(0,2*R), Range(0,OL)));
+					cv::transpose(b3,patch(Range(0,2*R), Range(0,xOL)));
 				}
 				patch.copyTo(output(Range(y-R,y+R), Range(x-R,x+R)));
 				maskBlock.copyTo(mask(Range(y-R,y+R), Range(x-R,x+R)));

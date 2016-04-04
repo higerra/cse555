@@ -13,10 +13,10 @@ DEFINE_string(source, "", "Path to input source texture");
 DEFINE_string(guide, "", "Path to guide image");
 DEFINE_int32(blockSize, 50, "block size");
 DEFINE_int32(overlap, 10, "overlap");
-DEFINE_int32(outWidth, 800, "width of output image");
-DEFINE_int32(outHeight, 600, "height of output image");
-DEFINE_double(alpha, 0.05, "weight of transfer");
-DEFINE_int32(blurSize, 5, "size of blur kernel");
+DEFINE_int32(outWidth, 400, "width of output image");
+DEFINE_int32(outHeight, 300, "height of output image");
+DEFINE_double(alpha, 0.02, "weight of transfer");
+DEFINE_int32(blurSize, 10, "size of blur kernel");
 DEFINE_int32(max_iter, 3, "number of iterations");
 
 int main(int argc, char** argv){
@@ -69,7 +69,7 @@ int main(int argc, char** argv){
 	for(auto i=0; i<N; ++i) {
 		expandTexture(srcTex, guide, output, mask, config);
 		config.blockSize *= 0.67;
-		config.alpha = 0.8 * ((float)(i) / (float)(N-1)) + 0.1;
+		config.alpha = 0.1 * 0.8 * ((float)(i) / (float)(N-1)) + 0.1;
 	}
 	imwrite("result.jpg", output);
 

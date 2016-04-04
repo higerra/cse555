@@ -53,16 +53,16 @@ disp('Done');
 %Q-learning
 disp('Q learning');
 alpha = 0.995;
-constp = 2;
+constp = 0.9;
 converge_th = 0.001;
 Dq = D .^ constp;
 iterCount = 0;
 while true
     iterCount = iterCount + 1;
     Dq2 = Dq;
-    Dq3 = Dq;
-    %Dq3(logical(eye(kFrame))) = max(max(D));
-    mj = min(Dq3(m+1:kFrame-m+1,m+1:kFrame-m+1),[],2);
+    mj = zeros(kFrame, kFrame);
+    mdq = min(Dq(m+1:kFrame-m+1,m+1:kFrame-m+1),[],2);
+    mj(m+1:kFrame-m+1,m+1:kFrame-m+1) = repmat(mdq', kFrame-2*m+1, 1);
     
     Dq = D.^constp + alpha * mj;
     diff = sqrt(sum(sum((Dq - Dq2).^2)));
