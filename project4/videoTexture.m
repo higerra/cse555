@@ -65,10 +65,8 @@ while true
     mj(m+1:kFrame-m+1) = min(Dq(m+1:kFrame-m+1,m+1:kFrame-m+1),[],2);
     mj(kFrame-m+2) = max(max(Dq));
     Dq2 = Dq;
-    for i=kFrame-m+1:-1:m+1
-        for j=m+1:kFrame-m+1
-            Dq(i,j) = D(i,j)^constp + alpha*mj(j+1);
-        end
+    for j=m+1:kFrame-m+1
+        Dq(:,j) = D(:,j).^constp + alpha*mj(j+1);
     end
     diff = sqrt(sum(sum((Dq - Dq2).^2)));
     fprintf('iteration %d, error %.3f\n', iterCount, diff);
