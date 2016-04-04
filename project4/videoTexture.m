@@ -32,6 +32,7 @@ for i=1:kFrame
         D(i,j) = sqrt((I1-I2) * (I1-I2)');
     end
 end
+%D(kFrame+1,:) = max(max(D));
 disp('Done');
 
 %diagnal filter
@@ -51,36 +52,36 @@ D = Df;
 disp('Done');
 
 %Q-learning
-disp('Q learning');
-alpha = 0.995;
-constp = 0.9;
-converge_th = 0.001;
-Dq = D .^ constp;
-iterCount = 0;
-while true
-    iterCount = iterCount + 1;
-    Dq2 = Dq;
-    mj = zeros(kFrame, kFrame);
-    mdq = min(Dq(m+1:kFrame-m+1,m+1:kFrame-m+1),[],2);
-    mj(m+1:kFrame-m+1,m+1:kFrame-m+1) = repmat(mdq', kFrame-2*m+1, 1);
-    
-    Dq = D.^constp + alpha * mj;
-    diff = sqrt(sum(sum((Dq - Dq2).^2)));
-    
-    fprintf('iteration %d, error %.3f\n', iterCount, diff);
-    if diff <= converge_th
-        break;
-    end
-end
-disp('Done');
-D = Dq;
+% disp('Q learning');
+% alpha = 0.995;
+% constp = 2;
+% converge_th = 0.001;
+% Dq = D .^ constp;
+% iterCount = 0;
+% while true
+%     iterCount = iterCount + 1;
+%     Dq2 = Dq;
+%     mj = zeros(kFrame+1, kFrame);
+%     mdq = min(Dq(m+2:kFrame-m+2,m+1:kFrame-m+1),[],2);
+%     mj(m+1:kFrame-m+1,m+1:kFrame-m+1) = repmat(mdq', kFrame-2*m+1, 1);
+%     
+%     Dq = D.^constp + alpha * mj;
+%     diff = sqrt(sum(sum((Dq - Dq2).^2)));
+%     
+%     fprintf('iteration %d, error %.3f\n', iterCount, diff);
+%     if diff <= converge_th
+%         break;
+%     end
+% end
+% disp('Done');
+% D = Dq;
 
 %compute P matrix
 aveD = mean(mean(D(m+1:kFrame-m,m+1:kFrame-m)));
-sigma = 0.3 * aveD;
+sigma = 0.1 * aveD;
 P = zeros(kFrame, kFrame);
-for i=m+1:kFrame-m
-    for j=m+1:kFrame-m
+for i=m+1:kFrame-m+1
+    for j=m+1:kFrame-m+1
         P(i,j) = exp(-1*D(i+1,j)/sigma);
     end
    P(i,:) = P(i,:) / sum(P(i,:));
@@ -100,27 +101,27 @@ hold off;
 
 %cdf from pdf
 cdf = cumsum(P,2);
-source = m+1;
+source = kFrame-1;
 kOutput = 1000;
 
-% figure(2),
-% hold on;
-% x = rand(kOutput,1);
-% for i=1:kOutput
-%     %draw from distribution
-%     target = m+1;
-%     if x > cdf(source,1)
-%         for j=m+1:kFrame - m
-%             if x(i) > cdf(source,j-1) && x(i) <= cdf(source,j)
-%                 target = j;
-%                 break;
-%             end
-%         end
-%     end
-%     fprintf('Jump from frame %d to %d, p: %.3f\n', source, target, P(source,target));
-%     imshow(frames{target});
-%     source = target;
-%     pause(1.0/(fps+2));
-% end
-% hold off;
+figure(2),
+hold on;
+x = rand(kOutput,1);
+for i=1:kOutput
+    %draw from distribution
+    target = m+1;
+    if x > cdf(source,1)
+        for j=m+1:kFrame - m
+            if x(i) > cdf(source,j-1) && x(i) <= cdf(source,j)
+                target = j;
+                break;
+            end
+        end
+    end
+    fprintf('Jump from frame %d to %d, p: %.3f\n', source, target, P(source,target));
+    imshow(frames{target});
+    source = target;
+    pause(1.0/(fps+2));
+end
+hold off;
 end
