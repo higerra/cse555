@@ -52,33 +52,37 @@ D = Df;
 disp('Done');
 
 %Q-learning
-% disp('Q learning');
-% alpha = 0.995;
-% constp = 2;
-% converge_th = 0.001;
-% Dq = D .^ constp;
-% iterCount = 0;
-% while true
-%     iterCount = iterCount + 1;
-%     Dq2 = Dq;
-%     mj = zeros(kFrame+1, kFrame);
-%     mdq = min(Dq(m+2:kFrame-m+2,m+1:kFrame-m+1),[],2);
-%     mj(m+1:kFrame-m+1,m+1:kFrame-m+1) = repmat(mdq', kFrame-2*m+1, 1);
-%     
-%     Dq = D.^constp + alpha * mj;
-%     diff = sqrt(sum(sum((Dq - Dq2).^2)));
-%     
-%     fprintf('iteration %d, error %.3f\n', iterCount, diff);
-%     if diff <= converge_th
-%         break;
-%     end
-% end
-% disp('Done');
-% D = Dq;
+disp('Q learning');
+alpha = 0.995;
+constp = 1;
+converge_th = 0.001;
+Dq = D .^ constp;
+iterCount = 0;
+
+while true
+    iterCount = iterCount + 1;
+    mj = zeros(kFrame+1,1);
+    mj(m+1:kFrame-m+1) = min(Dq(m+1:kFrame-m+1,m+1:kFrame-m+1),[],2);
+    mj(kFrame-m+2) = max(max(Dq));
+    Dq2 = Dq;
+    for i=kFrame-m+1:-1:m+1
+        for j=m+1:kFrame-m+1
+            Dq(i,j) = D(i,j)^constp + alpha*mj(j+1);
+        end
+    end
+    diff = sqrt(sum(sum((Dq - Dq2).^2)));
+    fprintf('iteration %d, error %.3f\n', iterCount, diff);
+    if diff <= converge_th
+        break;
+    end
+end
+disp('Done');
+D = Dq;
 
 %compute P matrix
-aveD = mean(mean(D(m+1:kFrame-m,m+1:kFrame-m)));
-sigma = 0.1 * aveD;
+aveD = mean(mean(D(m+1:kFrame-m+1, m+1:kFrame-m+1)));
+%sigma = 0.1 * aveD;
+sigma = 2;
 P = zeros(kFrame, kFrame);
 for i=m+1:kFrame-m+1
     for j=m+1:kFrame-m+1
