@@ -139,7 +139,7 @@ cdf = cumsum(P,2);
 source = m+1;
 kOutput = max(kFrame * 2, 1000);
 
-vwriter = VideoWriter(strcat('result_',filename), 'MPEG-4');
+vwriter = VideoWriter(strcat('result_',filename));
 vwriter.FrameRate = fps;
 open(vwriter);
 
